@@ -9,6 +9,7 @@
 	} from '$lib/crsf';
 	import { serial as polyfill } from 'web-serial-polyfill';
 	import Map from '$lib/components/Map.svelte';
+	import MapMarker from '$lib/components/MapMarker.svelte';
 
 	let port: any = null;
 	let reader: any = null;
@@ -85,9 +86,28 @@
 	});
 </script>
 
-<div class="fixed inset-0 flex flex-col bg-stone-800 text-white">
-	<div class="p-2">top bar</div>
-	<Map lat={0} lon={0} zoom={2} />
+<div class="fixed inset-0 flex flex-col bg-gray-800 text-white">
+	<div class="p-2">
+		<button
+			type="button"
+			class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+			on:click={clickConnect}>Connect</button
+		>
+		<button
+			type="button"
+			class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+			on:click={clickDisconnect}>Disconnect</button
+		>
+	</div>
+	<Map lat={0} lon={0} zoom={2}>
+		{#if messages.gps}
+			<MapMarker
+				lat={messages.gps.latitude}
+				lon={messages.gps.longitude}
+				hdg={messages.gps.course}
+			/>
+		{/if}
+	</Map>
 	<div class="p-2">bottom bar</div>
 </div>
 <!--<div class="h-full flex flex-col items-center justify-start mt-10">-->

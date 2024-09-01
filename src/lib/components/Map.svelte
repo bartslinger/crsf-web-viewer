@@ -20,7 +20,7 @@
 			style: 'mapbox://styles/mapbox/satellite-streets-v11',
 			center: [lon, lat],
 			zoom,
-			attributionControl: false,
+			attributionControl: true,
 			logoPosition: 'bottom-right'
 		});
 		map.addControl(new mapbox.NavigationControl());
