@@ -8,6 +8,7 @@
 		const bytes: number[] = Object.values(message);
 		const byteArray = new Uint8Array(bytes);
 		uint8Arrays.push(byteArray);
+		break;
 	}
 
 	// Function to create a ReadableStream from an array of Uint8Arrays
@@ -22,21 +23,110 @@
 		});
 	}
 
+	class CrsfFramingTransformer {
+		buffer: number[];
+
+		constructor() {
+			// A container for holding stream data until a new line.
+			this.buffer = [];
+		}
+
+		transform(chunk: Uint8Array, controller) {
+			this.buffer = [...this.buffer, ...chunk];
+
+			// delete bytes until the first value in buffer is 234
+			while (this.buffer.length > 0 && this.buffer[0] !== 0xea) {
+				this.buffer.shift();
+			}
+			if (this.buffer.length === 0) {
+				return;
+			}
+
+			// find all positions of 0xea in the buffer
+			const frameStartIndices = [];
+			for (let i = 0; i < this.buffer.length; i++) {
+				if (this.buffer[i] === 0xea) {
+					frameStartIndices.push(i);
+				}
+			}
+
+			for (const frameStartIndex of frameStartIndices) {
+				if (this.buffer.length < frameStartIndex + 3) {
+					// should at least have start byte, frame length, message type and crc
+					break;
+				}
+				const frameLength = this.buffer[frameStartIndex + 1] + 2;
+				if (this.buffer.length < frameStartIndex + frameLength) {
+					// maybe the message is not complete yet
+					// or maybe the length byte is corrupted, there might be a next 0xea
+					continue;
+				}
+				const slice = this.buffer.slice(frameStartIndex, frameStartIndex + frameLength);
+				console.log(slice);
+				const crc = slice[frameLength - 1];
+				console.log(crc);
+				break;
+			}
+			// 	if (this.buffer.length < frameStartIndex + frameLength) {
+			// 		// maybe the message is not complete yet
+			// 		// or maybe the length byte is corrupted, there might be a next 0xea
+			// 		continue;
+			// 	}
+			// 	const frame = this.buffer.slice(frameStartIndex, frameStartIndex + frameLength);
+			// 	controller.enqueue(frame);
+			// 	this.buffer = this.buffer.slice(frameStartIndex + frameLength);
+			// }
+
+			// // for each 0xea in the buffer, check if that is the start of a valid frame
+			// while (this.buffer.length > 0) {
+			// 	const frameStartIndex = this.buffer.indexOf(0xea);
+			// 	if (frameStartIndex === -1) {
+			// 		break;
+			// 	}
+			// 	if (this.buffer.length < frameStartIndex + 3) {
+			// 		// should at least have start byte, frame length, message type and crc
+			// 		break;
+			// 	}
+			// 	const frameLength = this.buffer[frameStartIndex + 1];
+			// 	if (this.buffer.length < frameStartIndex + frameLength) {
+			// 		// maybe the message is not complete yet
+			// 		// or maybe the length byte is corrupted, there might be a next 0xea
+			// 		continue;
+			// 	}
+			// 	const frame = this.buffer.slice(frameStartIndex, frameStartIndex + frameLength);
+			// 	controller.enqueue(frame);
+			// 	this.buffer = this.buffer.slice(frameStartIndex + frameLength);
+			// }
+
+			// Append new chunks to existing chunks.
+			// this.chunks += chunk;
+			// // For each line breaks in chunks, send the parsed lines out.
+			// const lines = this.chunks.split("\r\n");
+			// this.chunks = lines.pop();
+			// lines.forEach((line) => controller.enqueue(line));
+		}
+
+		flush(controller) {
+			// When the stream is closed, flush any remaining chunks out.
+			// controller.enqueue(this.buffer);
+		}
+	}
+
 	const readableStream = createReadableStreamFromUint8ArrayArray(uint8Arrays);
 
 	// Example of consuming the stream
 	// const reader = readableStream.getReader();
 
-	const textDecoder = new TextDecoderStream();
+	const myDecoder = new TransformStream(new CrsfFramingTransformer());
 	// pipe it to a decoder
-	const readableStreamClosed = readableStream.pipeTo(textDecoder.writable);
-	const reader = textDecoder.readable.getReader();
+	const readableStreamClosed = readableStream.pipeTo(myDecoder.writable);
+	const reader = myDecoder.readable.getReader();
 
 	const go = async () => {
 		while (true) {
 			const { value, done } = await reader.read();
 			if (done) break;
-			console.log(value);
+			//console.log(value);
 		}
 	};
 	go();
