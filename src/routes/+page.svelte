@@ -7,6 +7,7 @@
 		CrsfMessageTransformer,
 		type CrsfRadioMessage
 	} from '$lib/crsf';
+	import { serial as polyfill } from 'web-serial-polyfill';
 
 	let port: any = null;
 	let reader: any = null;
@@ -40,14 +41,18 @@
 	};
 
 	const clickConnect = async () => {
+		let serial;
 		if ('serial' in navigator) {
-			port = await navigator.serial.requestPort();
-			if (port) {
-				console.log(port);
-				await port.open({ baudRate: 115200 });
-				console.log('port open');
-				await startListening();
-			}
+			serial = navigator.serial;
+		} else {
+			serial = polyfill;
+		}
+		port = await serial.requestPort();
+		if (port) {
+			console.log(port);
+			await port.open({ baudRate: 115200 });
+			console.log('port open');
+			await startListening();
 		}
 	};
 
@@ -63,15 +68,19 @@
 	};
 
 	onMount(() => {
+		let serial;
 		if ('serial' in navigator) {
-			navigator.serial.addEventListener('connect', (event) => {
-				console.log('connect event');
-			});
-
-			navigator.serial.addEventListener('disconnect', (event) => {
-				console.log('disconnect event');
-			});
+			serial = navigator.serial;
+		} else {
+			serial = polyfill;
 		}
+		serial.addEventListener('connect', (event) => {
+			console.log('connect event');
+		});
+
+		serial.addEventListener('disconnect', (event) => {
+			console.log('disconnect event');
+		});
 	});
 </script>
 
