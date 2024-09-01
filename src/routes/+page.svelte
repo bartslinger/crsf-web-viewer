@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {
+		type CrsfBatteryMessage,
 		CrsfFramingTransformer,
 		CrsfMessageTransformer,
-		type CrsfRadioIdMessage
+		type CrsfRadioMessage
 	} from '$lib/crsf';
 
 	let port: any = null;
@@ -11,7 +12,8 @@
 	let readableStreamClosed: any = null;
 	let framingDecoderStreamClosed: any = null;
 
-	let radio_id: CrsfRadioIdMessage | undefined;
+	let radio: CrsfRadioMessage | undefined;
+	let battery: CrsfBatteryMessage | undefined;
 
 	const startListening = async () => {
 		const crsfFramingDecoder = new TransformStream(new CrsfFramingTransformer());
@@ -23,8 +25,10 @@
 		while (true) {
 			const { value, done } = await reader.read();
 			if (done) break;
-			if (value.type === 'RADIO_ID') {
-				radio_id = value;
+			if (value.type === 'RADIO') {
+				radio = value;
+			} else if (value.type === 'BATTERY') {
+				battery = value;
 			}
 		}
 	};
@@ -83,15 +87,34 @@
 			<td class="p-4 bg-gray-100 text-lg font-semibold w-56"> MESSAGE_TYPE </td>
 			<td class="p-4 bg-gray-100 text-lg font-semibold w-96">Data</td>
 		</tr>
-		{#if radio_id}
+		{#if radio}
 			<tr>
-				<td class="p-4"> RADIO_ID </td>
+				<td class="p-4"> RADIO </td>
 				<td class="p-4">
 					<p>
-						Frequency: {Math.round(1000000 / (radio_id?.update_interval || 0))}Hz
+						Frequency: {Math.round(1000000 / (radio?.update_interval || 0))}Hz
 					</p>
 					<p>
-						Offset: {radio_id?.offset}
+						Offset: {radio?.offset}
+					</p>
+				</td>
+			</tr>
+		{/if}
+		{#if battery}
+			<tr>
+				<td class="p-4"> BATTERY </td>
+				<td class="p-4">
+					<p>
+						Voltage: {battery.voltage}V
+					</p>
+					<p>
+						Current: {battery.current}A
+					</p>
+					<p>
+						Capacity: {battery.capacity}mAh
+					</p>
+					<p>
+						Remaining: {battery.remaining}%
 					</p>
 				</td>
 			</tr>

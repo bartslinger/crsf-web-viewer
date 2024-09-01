@@ -1,9 +1,17 @@
 import { crc8DvbS2 } from '$lib/crc';
 
-export type CrsfRadioIdMessage = {
-	type: 'RADIO_ID';
+export type CrsfRadioMessage = {
+	type: 'RADIO';
 	update_interval: number;
 	offset: number;
+};
+
+export type CrsfBatteryMessage = {
+	type: 'BATTERY';
+	voltage: number;
+	current: number;
+	capacity: number;
+	remaining: number;
 };
 
 export class CrsfFramingTransformer {
@@ -64,6 +72,10 @@ export class CrsfFramingTransformer {
 	}
 }
 
+const GPS_ID = 0x02;
+const BATTERY_ID = 0x08;
+const RADIO_ID = 0x3a;
+
 export class CrsfMessageTransformer {
 	constructor() {}
 
@@ -71,17 +83,30 @@ export class CrsfMessageTransformer {
 		const byte_array = new Uint8Array(bytes);
 		const view = new DataView(byte_array.buffer);
 		const message_type = view.getUint8(2);
-		if (message_type === 0x3a) {
+		if (message_type === RADIO_ID) {
 			if (view.getUint8(3) !== 0xea && view.getUint8(5) !== 0x10) {
 				console.error('reject invalid radio_id message');
 				return;
 			}
 			const update_interval = view.getUint32(6, false) / 10;
 			const offset = view.getInt32(10, false) / 10;
-			const message: CrsfRadioIdMessage = {
-				type: 'RADIO_ID',
+			const message: CrsfRadioMessage = {
+				type: 'RADIO',
 				update_interval,
 				offset
+			};
+			controller.enqueue(message);
+		} else if (message_type === BATTERY_ID) {
+			const voltage = view.getUint16(3, false) / 10;
+			const current = view.getInt16(5, false) / 10;
+			const capacity = view.getUint16(7, false) * 256 + view.getUint8(9);
+			const remaining = view.getUint8(10);
+			const message: CrsfBatteryMessage = {
+				type: 'BATTERY',
+				voltage,
+				current,
+				capacity,
+				remaining
 			};
 			controller.enqueue(message);
 		}
