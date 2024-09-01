@@ -14,6 +14,16 @@ export type CrsfBatteryMessage = {
 	remaining: number;
 };
 
+export type CrsfGpsMessage = {
+	type: 'GPS';
+	latitude: number;
+	longitude: number;
+	groundspeed: number;
+	course: number;
+	altitude: number;
+	satellites: number;
+};
+
 export class CrsfFramingTransformer {
 	buffer: number[];
 
@@ -107,6 +117,23 @@ export class CrsfMessageTransformer {
 				current,
 				capacity,
 				remaining
+			};
+			controller.enqueue(message);
+		} else if (message_type === GPS_ID) {
+			const latitude = view.getInt32(3, false) / 10000000;
+			const longitude = view.getInt32(7, false) / 10000000;
+			const groundspeed = Math.round((view.getUint16(11, false) * 100 - 50) / 36);
+			const course = view.getInt16(13, false) / 100;
+			const altitude = view.getUint16(15, false) - 1000;
+			const satellites = view.getUint8(17);
+			const message: CrsfGpsMessage = {
+				type: 'GPS',
+				latitude,
+				longitude,
+				groundspeed,
+				course,
+				altitude,
+				satellites
 			};
 			controller.enqueue(message);
 		}

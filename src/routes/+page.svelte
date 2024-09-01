@@ -3,6 +3,7 @@
 	import {
 		type CrsfBatteryMessage,
 		CrsfFramingTransformer,
+		type CrsfGpsMessage,
 		CrsfMessageTransformer,
 		type CrsfRadioMessage
 	} from '$lib/crsf';
@@ -12,8 +13,11 @@
 	let readableStreamClosed: any = null;
 	let framingDecoderStreamClosed: any = null;
 
-	let radio: CrsfRadioMessage | undefined;
-	let battery: CrsfBatteryMessage | undefined;
+	let messages: {
+		radio: CrsfRadioMessage | undefined;
+		battery: CrsfBatteryMessage | undefined;
+		gps: CrsfGpsMessage | undefined;
+	} = {};
 
 	const startListening = async () => {
 		const crsfFramingDecoder = new TransformStream(new CrsfFramingTransformer());
@@ -26,9 +30,11 @@
 			const { value, done } = await reader.read();
 			if (done) break;
 			if (value.type === 'RADIO') {
-				radio = value;
+				messages.radio = value;
 			} else if (value.type === 'BATTERY') {
-				battery = value;
+				messages.battery = value;
+			} else if (value.type === 'GPS') {
+				messages.gps = value;
 			}
 		}
 	};
@@ -87,37 +93,61 @@
 			<td class="p-4 bg-gray-100 text-lg font-semibold w-56"> MESSAGE_TYPE </td>
 			<td class="p-4 bg-gray-100 text-lg font-semibold w-96">Data</td>
 		</tr>
-		{#if radio}
+		{#if messages.radio}
 			<tr>
 				<td class="p-4"> RADIO </td>
 				<td class="p-4">
 					<p>
-						Frequency: {Math.round(1000000 / (radio?.update_interval || 0))}Hz
+						Frequency: {Math.round(1000000 / (messages.radio?.update_interval || 0))}Hz
 					</p>
 					<p>
-						Offset: {radio?.offset}
+						Offset: {messages.radio?.offset}
 					</p>
 				</td>
 			</tr>
 		{/if}
-		{#if battery}
+		{#if messages.battery}
 			<tr>
 				<td class="p-4"> BATTERY </td>
 				<td class="p-4">
 					<p>
-						Voltage: {battery.voltage}V
+						Voltage: {messages.battery.voltage}V
 					</p>
 					<p>
-						Current: {battery.current}A
+						Current: {messages.battery.current}A
 					</p>
 					<p>
-						Capacity: {battery.capacity}mAh
+						Capacity: {messages.battery.capacity}mAh
 					</p>
 					<p>
-						Remaining: {battery.remaining}%
+						Remaining: {messages.battery.remaining}%
 					</p>
 				</td>
 			</tr>
 		{/if}
+		{#if messages.gps}
+			<tr>
+				<td class="p-4"> GPS </td>
+				<td class="p-4">
+					<p>
+						Latitude: {messages.gps.latitude}
+					</p>
+					<p>
+						Longitude: {messages.gps.longitude}
+					</p>
+					<p>
+						Groundspeed: {(messages.gps.groundspeed / 100).toFixed(2)}
+					</p>
+					<p>
+						Course: {messages.gps.course}
+					</p>
+					<p>
+						Altitude: {messages.gps.altitude}
+					</p>
+					<p>
+						Satellites: {messages.gps.satellites}
+					</p>
+				</td>
+			</tr>{/if}
 	</table>
 </div>
