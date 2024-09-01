@@ -1,25 +1,31 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import {
+		CrsfFramingTransformer,
+		CrsfMessageTransformer,
+		type CrsfRadioIdMessage
+	} from '$lib/crsf';
 
 	let port: any = null;
 	let reader: any = null;
+	let readableStreamClosed: any = null;
+	let framingDecoderStreamClosed: any = null;
 
-	let recording = [];
-	let output = '';
+	let radio_id: CrsfRadioIdMessage | undefined;
 
 	const startListening = async () => {
-		recording = [];
-		reader = port.readable.getReader();
-		// Listen to data coming from the serial device.
+		const crsfFramingDecoder = new TransformStream(new CrsfFramingTransformer());
+		const crsfMessageDecoder = new TransformStream(new CrsfMessageTransformer());
+		readableStreamClosed = port.readable.pipeTo(crsfFramingDecoder.writable);
+		framingDecoderStreamClosed = crsfFramingDecoder.readable.pipeTo(crsfMessageDecoder.writable);
+		reader = crsfMessageDecoder.readable.getReader();
+
 		while (true) {
 			const { value, done } = await reader.read();
-			if (done) {
-				reader.releaseLock();
-				break;
+			if (done) break;
+			if (value.type === 'RADIO_ID') {
+				radio_id = value;
 			}
-			// value is a byte array.
-			console.log(value);
-			recording.push(value);
 		}
 	};
 
@@ -38,11 +44,11 @@
 	const clickDisconnect = async () => {
 		if (port) {
 			await reader.cancel();
+			await framingDecoderStreamClosed.catch(() => {});
+			await readableStreamClosed.catch(() => {});
 			await port.close();
 			console.log('port closed');
 			port = null;
-
-			output = JSON.stringify(recording);
 		}
 	};
 
@@ -59,18 +65,23 @@
 	});
 </script>
 
-<div class="h-full flex items-center justify-center">
-	<button
-		type="button"
-		class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
-		on:click={clickConnect}>Connect</button
-	>
-	<button
-		type="button"
-		class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
-		on:click={clickDisconnect}>Disconnect</button
-	>
+<div class="h-full flex flex-col items-center justify-start mt-10">
+	<div>
+		<button
+			type="button"
+			class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+			on:click={clickConnect}>Connect</button
+		>
+		<button
+			type="button"
+			class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+			on:click={clickDisconnect}>Disconnect</button
+		>
+	</div>
+	<div>
+		{Math.round(1000000 / (radio_id?.update_interval || 0))}Hz
+	</div>
+	<div>
+		{radio_id?.offset}
+	</div>
 </div>
-<pre>
-		{output}
-	</pre>
