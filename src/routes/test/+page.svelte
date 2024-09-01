@@ -87,15 +87,27 @@
 		}
 	}
 
+	class CrsfMessageTransformer {
+		constructor() {}
+
+		transform(message: number[], controller) {
+			console.log('message:', message);
+		}
+
+		flush(controller) {}
+	}
+
 	const readableStream = createReadableStreamFromUint8ArrayArray(uint8Arrays);
 
 	// Example of consuming the stream
 	// const reader = readableStream.getReader();
 
-	const myDecoder = new TransformStream(new CrsfFramingTransformer());
+	const crsfFramingDecoder = new TransformStream(new CrsfFramingTransformer());
+	const crsfMessageDecoder = new TransformStream(new CrsfMessageTransformer());
 	// pipe it to a decoder
-	const readableStreamClosed = readableStream.pipeTo(myDecoder.writable);
-	const reader = myDecoder.readable.getReader();
+	const readableStreamClosed = readableStream.pipeTo(crsfFramingDecoder.writable);
+	const framingDeoderStreamClosed = crsfFramingDecoder.readable.pipeTo(crsfMessageDecoder.writable);
+	const reader = crsfMessageDecoder.readable.getReader();
 
 	const go = async () => {
 		while (true) {
