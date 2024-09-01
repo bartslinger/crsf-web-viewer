@@ -9,7 +9,7 @@
 		const bytes: number[] = Object.values(message);
 		const byteArray = new Uint8Array(bytes);
 		uint8Arrays.push(byteArray);
-		break;
+		// break;
 	}
 
 	// Function to create a ReadableStream from an array of Uint8Arrays
@@ -51,7 +51,11 @@
 				}
 			}
 
+			let parsedUntil = 0;
 			for (const frameStartIndex of frameStartIndices) {
+				if (frameStartIndex < parsedUntil) {
+					continue;
+				}
 				if (this.buffer.length < frameStartIndex + 3) {
 					// should at least have start byte, frame length, message type and crc
 					break;
@@ -68,45 +72,13 @@
 				// console.log(crc_relevant_slice);
 				const calculated_crc = crc8DvbS2(crc_relevant_slice);
 				const actual_crc = slice[frameLength - 1];
-				console.log(calculated_crc, actual_crc);
+				if (calculated_crc === actual_crc) {
+					controller.enqueue(slice);
+					parsedUntil = frameStartIndex + frameLength;
+				}
 			}
-			// 	if (this.buffer.length < frameStartIndex + frameLength) {
-			// 		// maybe the message is not complete yet
-			// 		// or maybe the length byte is corrupted, there might be a next 0xea
-			// 		continue;
-			// 	}
-			// 	const frame = this.buffer.slice(frameStartIndex, frameStartIndex + frameLength);
-			// 	controller.enqueue(frame);
-			// 	this.buffer = this.buffer.slice(frameStartIndex + frameLength);
-			// }
 
-			// // for each 0xea in the buffer, check if that is the start of a valid frame
-			// while (this.buffer.length > 0) {
-			// 	const frameStartIndex = this.buffer.indexOf(0xea);
-			// 	if (frameStartIndex === -1) {
-			// 		break;
-			// 	}
-			// 	if (this.buffer.length < frameStartIndex + 3) {
-			// 		// should at least have start byte, frame length, message type and crc
-			// 		break;
-			// 	}
-			// 	const frameLength = this.buffer[frameStartIndex + 1];
-			// 	if (this.buffer.length < frameStartIndex + frameLength) {
-			// 		// maybe the message is not complete yet
-			// 		// or maybe the length byte is corrupted, there might be a next 0xea
-			// 		continue;
-			// 	}
-			// 	const frame = this.buffer.slice(frameStartIndex, frameStartIndex + frameLength);
-			// 	controller.enqueue(frame);
-			// 	this.buffer = this.buffer.slice(frameStartIndex + frameLength);
-			// }
-
-			// Append new chunks to existing chunks.
-			// this.chunks += chunk;
-			// // For each line breaks in chunks, send the parsed lines out.
-			// const lines = this.chunks.split("\r\n");
-			// this.chunks = lines.pop();
-			// lines.forEach((line) => controller.enqueue(line));
+			this.buffer = this.buffer.slice(parsedUntil);
 		}
 
 		flush(controller) {
@@ -129,7 +101,7 @@
 		while (true) {
 			const { value, done } = await reader.read();
 			if (done) break;
-			//console.log(value);
+			console.log(value);
 		}
 	};
 	go();
