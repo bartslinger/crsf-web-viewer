@@ -78,10 +78,23 @@
 			on:click={clickDisconnect}>Disconnect</button
 		>
 	</div>
-	<div>
-		{Math.round(1000000 / (radio_id?.update_interval || 0))}Hz
-	</div>
-	<div>
-		{radio_id?.offset}
-	</div>
+	<table class="mt-10 table-fixed">
+		<tr>
+			<td class="p-4 bg-gray-100 text-lg font-semibold w-56"> MESSAGE_TYPE </td>
+			<td class="p-4 bg-gray-100 text-lg font-semibold w-96">Data</td>
+		</tr>
+		{#if radio_id}
+			<tr>
+				<td class="p-4"> RADIO_ID </td>
+				<td class="p-4">
+					<p>
+						Frequency: {Math.round(1000000 / (radio_id?.update_interval || 0))}Hz
+					</p>
+					<p>
+						Offset: {radio_id?.offset}
+					</p>
+				</td>
+			</tr>
+		{/if}
+	</table>
 </div>
